@@ -111,10 +111,29 @@ ri
 #include "labgen.yy.c"
 
 int yyerror(const char *mess) {
-	fprintf(stderr, "FATAL: %s (near %s)\n", mess, yytext);
+	fprintf(stderr, "FATAL: %s (near %s) at line %d\n", mess, yytext, yylineno + 1);
 	exit(1);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+  FILE *f;
+
+  switch(argc) {
+    case 2:
+      if(strcmp(argv[1], "-") != 0) {
+        f = fopen(argv[1], "r");
+        if(f == NULL) {
+          fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
+          exit(1);
+        }
+        yyin = f;
+      }
+      break;
+
+    default:
+      fprintf(stderr, "Usage: %s [<if> [<of>]]\n", argv[0]);
+      exit(1);
+  }
+
 	return yyparse();
 }
