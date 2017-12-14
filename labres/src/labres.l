@@ -12,4 +12,4 @@
 "E"		{ return E; }
 [ \n\t]	;
 #.*\n	;
-.		return *yytext;
+.		{ fputs("syntax error\n", stderr); exit(1); }
