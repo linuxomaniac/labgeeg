@@ -1,4 +1,4 @@
-all: labres_ex1
+all: labres_ex1 labres_ex2
 
 %: %.y %.l
 	bison -o $@.c $<

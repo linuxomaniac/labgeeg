@@ -48,7 +48,7 @@ Exit:;
 
 %%
 
-#include "labres_ex1.yy.c"
+#include "labres_ex2.yy.c"
 
 int yyerror(const char *mess) {}
 

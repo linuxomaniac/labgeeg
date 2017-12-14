@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
   FILE *f = NULL;
   int r;
 
-  if(argc > 1) {
+  if(argc == 2) {
     if(strcmp(argv[1], "-") != 0) {
       f = fopen(argv[1], "r");
       if(f == NULL) {
@@ -128,6 +128,8 @@ int main(int argc, char *argv[]) {
       }
       yyin = f;
     }
+  } else if(argc == 3) {
+    /* nothing */
   } else if(argc > 3) {
     fprintf(stderr, "Usage: %s [<if> [<of>]]\n", argv[0]);
     exit(1);
