@@ -116,24 +116,28 @@ int yyerror(const char *mess) {
 }
 
 int main(int argc, char *argv[]) {
-  FILE *f;
+  FILE *f = NULL;
+  int r;
 
-  switch(argc) {
-    case 2:
-      if(strcmp(argv[1], "-") != 0) {
-        f = fopen(argv[1], "r");
-        if(f == NULL) {
-          fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
-          exit(1);
-        }
-        yyin = f;
+  if(argc > 1) {
+    if(strcmp(argv[1], "-") != 0) {
+      f = fopen(argv[1], "r");
+      if(f == NULL) {
+        fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
+        exit(1);
       }
-      break;
-
-    default:
-      fprintf(stderr, "Usage: %s [<if> [<of>]]\n", argv[0]);
-      exit(1);
+      yyin = f;
+    }
+  } else if(argc > 3) {
+    fprintf(stderr, "Usage: %s [<if> [<of>]]\n", argv[0]);
+    exit(1);
   }
 
-	return yyparse();
+  r = yyparse();
+
+  if(f) {
+    fclose(f);
+  }
+
+  return r;
 }
