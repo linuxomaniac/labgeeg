@@ -13,6 +13,8 @@
 %token tk_INST tk_SIZE tk_IN tk_OUT tk_SHOW tk_PTA tk_PTD tk_R tk_F tk_FOR
 %token tk_WH tk_MD
 
+%type pt *pt;
+
 %%
 
 labyrinthe : suite_instruction;
@@ -23,17 +25,17 @@ suite_instruction
 
 instruction
   : ';'
-  | IDENT '=' xcst
-  | IDENT '*' '=' xcst
-  | IDENT '/' '=' xcst
-  | IDENT '-' '=' xcst
-  | IDENT '+' '=' xcst
-  | IDENT '%' '=' xcst
-  | tk_SIZE xcst
-  | tk_SIZE xcst ',' xcst
+  | IDENT '=' xcst        { $$ = $2; }
+  | IDENT '*' '=' xcst    { $$ *= $3; }
+  | IDENT '/' '=' xcst    { $$ /= $3; }
+  | IDENT '-' '=' xcst    { $$ -= $3; }
+  | IDENT '+' '=' xcst    { $$ += $3; }
+  | IDENT '%' '=' xcst    { $$ %= $3; }
+  | tk_SIZE xcst          { labAlloc($1, $1); }
+  | tk_SIZE xcst ',' xcst { labAlloc($1, $3); }
   | tk_IN pt
   | tk_OUT suite_pt
-  | tk_SHOW
+  | tk_SHOW               { labShow(); }
   | tk_INST
   | tk_INST tk_PTA suite_pt
   | tk_INST tk_PTD pt suite_ptri
@@ -68,26 +70,26 @@ dest : DIR pt;
 expr
   : IDENT
   | CNUM
-  | expr '+' expr
-  | expr '-' expr
-  | expr '*' expr
-  | expr '/' expr
-  | expr '%' expr
-  | '(' expr ')'
+  | expr '+' expr { $$ = $1 + $3; }
+  | expr '-' expr { $$ = $1 - $3; }
+  | expr '*' expr { $$ = $1 * $3; }
+  | expr '/' expr { $$ = $1 / $3; }
+  | expr '%' expr { $$ = $1 % $3; }
+  | '(' expr ')'  { $$ = $2; }
   | '+' expr
-  | '-' expr;
+  | '-' expr;     { $$ = - $2; }
 
 xcst
   : IDENT
   | CNUM
-  | xcst '+' xcst
-  | xcst '-' xcst
-  | xcst '*' xcst
-  | xcst '/' xcst
-  | xcst '%' xcst
-  | '(' xcst ')'
+  | xcst '+' xcst { $$ = $1 + $3; }
+  | xcst '-' xcst { $$ = $1 - $3; }
+  | xcst '*' xcst { $$ = $1 * $3; }
+  | xcst '/' xcst { $$ = $1 / $3; }
+  | xcst '%' xcst { $$ = $1 % $3; }
+  | '(' xcst ')'  { $$ = $2; }
   | '+' xcst
-  | '-' xcst;
+  | '-' xcst;     { $$ = - $2; }
 
 pt : '(' xcst ',' xcst ')';
 
@@ -111,7 +113,8 @@ ri
 #include "labgen.yy.c"
 
 int yyerror(const char *mess) {
-	fprintf(stderr, "FATAL: %s (near %s) at line %d\n", mess, yytext, yylineno + 1);
+	fprintf(stderr, "FATAL: %s (near %s) at line %d\n",
+          mess, yytext, yylineno + 1);
 	exit(1);
 }
 
