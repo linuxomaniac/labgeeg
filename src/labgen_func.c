@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "list.h"
-#include "labgen_main.h"
+#include "labgen_func.h"
 
 /* Structure globale du labyrinthe */
 struct {
@@ -61,7 +61,7 @@ void labAlloc(unsigned int width, unsigned int height) {
 	lab.tab = (List **)malloc(sizeof(List *) * lab.height);
 	for(i = 0; i < lab.height; i++) {
 		lab.tab[i] = (List *)malloc(sizeof(List) * lab.width);
-		for(j = 0; j < lab.height; j++) {
+		for(j = 0; j < lab.width; j++) {
 			lab.tab[i][j] = listAlloc();
 		}
 	}
@@ -70,9 +70,10 @@ void labAlloc(unsigned int width, unsigned int height) {
 void labFree() {
 	unsigned int i, j;
 
-	if(lab.tab != NULL) {
+	if(labIsAllocated()) {
 		for(i = 0; i < lab.height; i++) {
-			for(j = 0; j < lab.height; j++) {
+			for(j = 0; j < lab.width; j++) {
+				/* TODO boucler dans les éléments de la boucle pour les free */
 				listFree(lab.tab[i][j]);
 			}
 			free(lab.tab[i]);
@@ -82,8 +83,12 @@ void labFree() {
 	}
 }
 
-void labAssertInit() {
-	if(!lab.tab) {
+bool labIsAllocated() {
+	return lab.tab != NULL;
+}
+
+void labAssertAllocated() {
+	if(!labIsAllocated()) {
 		fputs("Invalid syntax! Please use SIZE first.\n", stderr);
 		/* Pas besoin  de free vu qu'on n'a rien alloc. */
 		exit(1);
@@ -151,14 +156,15 @@ void showBorder(unsigned int *colsWidth, unsigned int firstColWidth,
 		lineBuffer[processed] = '+';
 	}
 
-	lineBuffer[lineBufferSize - 2] = '+';
+	lineBuffer[lineBufferSize - 3] = '+';
+	lineBuffer[lineBufferSize - 2] = '\n';
 	lineBuffer[lineBufferSize - 1] = '\0';
 }
 
-unsigned int showCell(List l, char *buf) {
+unsigned int showCell(List l, unsigned int colWidth, char *buf) {
 	Cell *cell;
 	CellState *state;
-	unsigned int processed = 0, c;
+	unsigned int processed = 0;
 	char *dir;
 
 	cell = listGetHead(l);
@@ -183,18 +189,16 @@ unsigned int showCell(List l, char *buf) {
 				break;
 
 			case CWH:
-				c = 1 + intlen(state->id);
-				processed += snprintf(buf + processed, c, "*%d", state->id);
+			/* Normalement on ne dépassera pas le buffer */
+				processed += sprintf(buf + processed, "*%d", state->id);
 				break;
 			case CMD:
-				c = 1 + intlen(state->id);
-				processed += snprintf(buf + processed, c, "A%d", state->id);
+				processed += sprintf(buf + processed, "A%d", state->id);
 				break;
 
 			case CMDEXIT:
 				dir = directionToStr(state->parentdir);
-				c = 1 + intlen(state->parentid) + strlen(dir);
-				processed += snprintf(buf + processed, c, "a%d%s",
+				processed += sprintf(buf + processed, "a%d%s",
 										state->id, dir);
 				break;
 		}
@@ -202,25 +206,31 @@ unsigned int showCell(List l, char *buf) {
 		cell = cellGetNext(cell);
 	}
 
+	if(processed < colWidth) {
+		// On complète par des espaces
+		memset(buf + processed, ' ', colWidth - processed);
+		processed = colWidth;
+	}
+
 	buf[processed++] = '|';
 
 	return processed;
 }
 
-void show(FILE *fout) {
+void labShow(FILE *fout) {
 	unsigned int i, j, processed;
 	unsigned int *colsWidth;
-	unsigned int lineBufferSize, cellBufferSize, firstColWidth;
-	char *lineBuffer, *cellBuffer;
+	unsigned int lineBufferSize, firstColWidth;
+	char *lineBuffer;
 
-	labAssertInit();
+	labAssertAllocated();
 
-	/* On a lab.width colonnes donc lab.width + 1 signes "+", et le \0 final,
-	 * mais aussi la largeur de la colonne zéro, celle qui contient les
+	/* On a lab.width colonnes donc (lab.width + 1) signes "+", et le \0 final,
+	 * le \n, mais aussi la largeur de la colonne zéro, celle qui contient les
 	 * chiffres.
 	 */
 	firstColWidth = intlen(lab.height);
-	lineBufferSize = lab.width + 2 + firstColWidth;
+	lineBufferSize = lab.width + 3 + firstColWidth;
 
 	/* On calcule les largeurs des colonnes */
 	colsWidth = (unsigned int *)malloc(sizeof(unsigned int) * lab.width);
@@ -228,13 +238,9 @@ void show(FILE *fout) {
 		colsWidth[j] = labRowWidth(j);
 		/* On ajoute les largeurs indviduelles des colonnes */
 		lineBufferSize += colsWidth[j];
-		if(colsWidth[j] > cellBufferSize) {
-			cellBufferSize = colsWidth[j];
-		}
 	}
 
 	lineBuffer = (char *)malloc(lineBufferSize);
-	cellBuffer = (char *)malloc(cellBufferSize);
 
 	/* Afficher la bordure supérieure */
 	showBorder(colsWidth, firstColWidth, lineBuffer, lineBufferSize);
@@ -245,10 +251,12 @@ void show(FILE *fout) {
 		lineBuffer[0] = '|';
 
 		processed = 1;
-		for(i = 0; i < lab.height; i++) {
-			processed += showCell(lab.tab[i][j], lineBuffer + processed);
+		for(j = 0; j < lab.width; j++) {
+			processed += showCell(lab.tab[i][j], colsWidth[j],
+									lineBuffer + processed);
 		}
 
+		lineBuffer[lineBufferSize - 2] = '\n';
 		lineBuffer[lineBufferSize - 1] = '\0';
 
 		/* On afficher ce qu'on vient de calculer */
@@ -259,7 +267,6 @@ void show(FILE *fout) {
 		fputs(lineBuffer, fout);
 	}
 
-	free(cellBuffer);
 	free(lineBuffer);
 	free(colsWidth);
 }

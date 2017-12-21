@@ -1,6 +1,12 @@
 %{
+#define _POSIX_C_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
+#include "labgen_func.h"
+
+int yylex();
+int yyerror(const char *mess);
+
 %}
 
 %left '+' '-'
@@ -12,8 +18,6 @@
 %token IDENT CNUM DIR
 %token tk_INST tk_SIZE tk_IN tk_OUT tk_SHOW tk_PTA tk_PTD tk_R tk_F tk_FOR
 %token tk_WH tk_MD
-
-%type pt *pt;
 
 %%
 
@@ -35,7 +39,7 @@ instruction
   | tk_SIZE xcst ',' xcst { labAlloc($1, $3); }
   | tk_IN pt
   | tk_OUT suite_pt
-  | tk_SHOW               { labShow(); }
+  | tk_SHOW               { labShow(stdout); }
   | tk_INST
   | tk_INST tk_PTA suite_pt
   | tk_INST tk_PTD pt suite_ptri
@@ -77,7 +81,7 @@ expr
   | expr '%' expr { $$ = $1 % $3; }
   | '(' expr ')'  { $$ = $2; }
   | '+' expr
-  | '-' expr;     { $$ = - $2; }
+  | '-' expr      { $$ = - $2; };
 
 xcst
   : IDENT
@@ -89,7 +93,7 @@ xcst
   | xcst '%' xcst { $$ = $1 % $3; }
   | '(' xcst ')'  { $$ = $2; }
   | '+' xcst
-  | '-' xcst;     { $$ = - $2; }
+  | '-' xcst      { $$ = - $2; };
 
 pt : '(' xcst ',' xcst ')';
 
@@ -139,6 +143,8 @@ int main(int argc, char *argv[]) {
   }
 
   r = yyparse();
+
+  labFree();
 
   if(f) {
     fclose(f);
