@@ -1,5 +1,0 @@
-max = 2;
-SIZE max+1;
-IN (0,0);
-OUT (max,max);
-WALL PTA (1,1);

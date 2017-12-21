@@ -1,5 +1,0 @@
-max = 2;
-SZE max+1;
-IN (,0);
-OUT (max,max);
-WALL PT (2,2);

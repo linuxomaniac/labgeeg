@@ -1,5 +1,0 @@
-SIZE 3,3;
-IN (0,0);
-OUT (2,2);
-WALL;
-TOGGLE R (0,2) (2,0);
