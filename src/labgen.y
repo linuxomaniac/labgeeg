@@ -2,10 +2,12 @@
 #define _POSIX_C_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
-#include "labgen_func.h"
+#include <stdarg.h>
 
-int yylex();
-int yyerror(const char *mess);
+#include "iautils/top.h"
+#include "iautils/vars.h"
+
+
 
 %}
 
@@ -19,88 +21,78 @@ int yyerror(const char *mess);
 %token tk_INST tk_SIZE tk_IN tk_OUT tk_SHOW tk_PTA tk_PTD tk_R tk_F tk_FOR
 %token tk_WH tk_MD
 
+%union {
+  int entier;
+  char* chaine;
+  Tpoints* lpts;
+  Tpoint tpt;
+  Tvar* tvar;
+}
+
+%type <tvar> var
+%type <lpts> suite_pt
+%type <tpt> pt
+%type <entier> xcst
+%type <chaine> IDENT CNUM
+
 %%
 
-labyrinthe : suite_instruction;
+labyrinthe
+  : suite_vars inst_size suite_instructions
+  | inst_size suite_instructions;
 
-suite_instruction
-  : suite_instruction instruction
-  | instruction ';';
+suite_instructions
+  : suite_instructions instruction ';'
+  | instruction ';'
+  | tk_SHOW                         { lds_dump(gl_lds, stdout); };
 
 instruction
   : ';'
-  | IDENT '=' xcst        { $$ = $2; }
-  | IDENT '*' '=' xcst    { $$ *= $3; }
-  | IDENT '/' '=' xcst    { $$ /= $3; }
-  | IDENT '-' '=' xcst    { $$ -= $3; }
-  | IDENT '+' '=' xcst    { $$ += $3; }
-  | IDENT '%' '=' xcst    { $$ %= $3; }
-  | tk_SIZE xcst          { labAlloc($1, $1); }
-  | tk_SIZE xcst ',' xcst { labAlloc($1, $3); }
   | tk_IN pt
   | tk_OUT suite_pt
-  | tk_SHOW               { labShow(stdout); }
   | tk_INST
   | tk_INST tk_PTA suite_pt
   | tk_INST tk_PTD pt suite_ptri
   | tk_INST tk_R pt pt
   | tk_INST tk_R tk_F pt pt
-  | tk_INST tk_FOR suite_indice tk_IN suite_intervalle '(' expr ',' expr ')'
+  | tk_INST tk_FOR for_args '(' expr ',' expr ')'
   | tk_WH serie_pt
   | tk_MD pt dest_list;
 
-suite_indice
-  : suite_indice IDENT
-  | IDENT;
+inst_size
+  : tk_SIZE xcst ';'          { if($2 < 0 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
+  | tk_SIZE xcst ',' xcst ';' { if($2 < 0 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
 
-suite_intervalle
-  : suite_intervalle intervalle
-  | intervalle;
+suite_vars
+  : suite_vars var ';'
+  | var ';';
+
+var
+  : IDENT '=' xcst        { $$ = var_new($1, $3); }
+  | IDENT '*' '=' xcst    { $$->val *= $4; }
+  | IDENT '/' '=' xcst    { $$->val /= $4; }
+  | IDENT '-' '=' xcst    { $$->val -= $4; }
+  | IDENT '+' '=' xcst    { $$->val += $4; }
+  | IDENT '%' '=' xcst    { $$->val %= $4; };
+
+for_args
+  : IDENT "IN" intervalle
+  | IDENT for_args intervalle;
 
 intervalle
   : '[' expr ':' expr ']'
   | '[' expr ':' expr ':' expr ']';
 
-serie_pt
-  : serie_pt '-' '>' pt
-  | pt;
-
-dest_list
-  : dest_list dest
-  | dest;
-
-dest : DIR pt;
-
-expr
-  : IDENT
-  | CNUM
-  | expr '+' expr { $$ = $1 + $3; }
-  | expr '-' expr { $$ = $1 - $3; }
-  | expr '*' expr { $$ = $1 * $3; }
-  | expr '/' expr { $$ = $1 / $3; }
-  | expr '%' expr { $$ = $1 % $3; }
-  | '(' expr ')'  { $$ = $2; }
-  | '+' expr
-  | '-' expr      { $$ = - $2; };
-
-xcst
-  : IDENT
-  | CNUM
-  | xcst '+' xcst { $$ = $1 + $3; }
-  | xcst '-' xcst { $$ = $1 - $3; }
-  | xcst '*' xcst { $$ = $1 * $3; }
-  | xcst '/' xcst { $$ = $1 / $3; }
-  | xcst '%' xcst { $$ = $1 % $3; }
-  | '(' xcst ')'  { $$ = $2; }
-  | '+' xcst
-  | '-' xcst      { $$ = - $2; };
-
-pt : '(' xcst ',' xcst ')';
-
+pt : '(' xcst ',' xcst ')'  { $$ = (Tpoint){.x = $2, .y = $4}; };
 
 suite_pt
-  : suite_pt pt
-  | pt;
+  : suite_pt pt { pts_app_pt($$ = $1, $2); }
+  | pt          { pts_new_pt($1); };
+
+serie_pt
+  : serie_pt '-' '-' '>' pt { pts_app_pt($$ = $1, $2); }
+  | serie_pt '-' '>' pt     { pts_app_pt($$ = $1, $2); }
+  | pt                      { pts_new_pt($1); };
 
 suite_ptri
   : suite_ptri pt
@@ -112,43 +104,46 @@ ri
   : xcst
   | '*';
 
+dest_list
+  : dest_list dest
+  | dest;
+
+dest : DIR pt;
+
+expr
+  : IDENT         { $$ = $1->val; }
+  | CNUM          { $$ = atoi($1); }
+  | expr '+' expr { $$ = $1 + $3; }
+  | expr '-' expr { $$ = $1 - $3; }
+  | expr '*' expr { $$ = $1 * $3; }
+  | expr '/' expr { $$ = $1 / $3; }
+  | expr '%' expr { $$ = $1 % $3; }
+  | '(' expr ')'  { $$ = $2; }
+  | '+' expr      { $$ = $2; }
+  | '-' expr      { $$ = - $2; };
+
+xcst
+  : IDENT         { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$ = v->val; }
+  | CNUM          { $$ = atoi($1); }
+  | xcst '+' xcst { $$ = $1 + $3; }
+  | xcst '-' xcst { $$ = $1 - $3; }
+  | xcst '*' xcst { $$ = $1 * $3; }
+  | xcst '/' xcst { $$ = $1 / $3; }
+  | xcst '%' xcst { $$ = $1 % $3; }
+  | '(' xcst ')'  { $$ = $2; }
+  | '+' xcst      { $$ = $2; }
+  | '-' xcst      { $$ = - $2; };
+
 %%
 
 #include "labgen.yy.c"
 
-int yyerror(const char *mess) {
-	fprintf(stderr, "FATAL: %s (near %s) at line %d\n",
-          mess, yytext, yylineno + 1);
-	exit(1);
-}
-
-int main(int argc, char *argv[]) {
-  FILE *f = NULL;
-  int r;
-
-  if(argc == 2) {
-    if(strcmp(argv[1], "-") != 0) {
-      f = fopen(argv[1], "r");
-      if(f == NULL) {
-        fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
-        exit(1);
-      }
-      yyin = f;
-    }
-  } else if(argc == 3) {
-    /* nothing */
-  } else if(argc > 3) {
-    fprintf(stderr, "Usage: %s [<if> [<of>]]\n", argv[0]);
-    exit(1);
-  }
-
-  r = yyparse();
-
-  labFree();
-
-  if(f) {
-    fclose(f);
-  }
-
-  return r;
+extern void yyerror(const char* fmt, ...) {
+  char buf[10000];
+  va_list ap;
+  va_start(ap,fmt);
+  vsprintf(buf,fmt,ap);
+  va_end(ap);
+  fprintf(stderr,"%s:%d: %s (near '%s')\n",gl_infname,yylineno,buf,yytext);
+  exit(1);
 }
