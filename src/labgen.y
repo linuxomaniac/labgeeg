@@ -7,8 +7,6 @@
 #include "iautils/top.h"
 #include "iautils/vars.h"
 
-
-
 %}
 
 %left '+' '-'
@@ -26,10 +24,8 @@
   char* chaine;
   Tpoints* lpts;
   Tpoint tpt;
-  Tvar* tvar;
 }
 
-%type <tvar> var
 %type <lpts> suite_pt
 %type <tpt> pt
 %type <entier> xcst
@@ -44,12 +40,12 @@ labyrinthe
 suite_instructions
   : suite_instructions instruction ';'
   | instruction ';'
-  | tk_SHOW                         { lds_dump(gl_lds, stdout); };
+  | tk_SHOW                             { lds_dump(gl_lds, stdout); };
 
 instruction
   : ';'
-  | tk_IN pt
-  | tk_OUT suite_pt
+  | tk_IN pt                                      { lds_draw_pt(gl_lds, LDS_IN, $2); }
+  | tk_OUT suite_pt                               { lds_draw_pts(gl_lds, LDS_OUT, $2); pts_free($2); }
   | tk_INST
   | tk_INST tk_PTA suite_pt
   | tk_INST tk_PTD pt suite_ptri
@@ -61,19 +57,19 @@ instruction
 
 inst_size
   : tk_SIZE xcst ';'          { if($2 < 0 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
-  | tk_SIZE xcst ',' xcst ';' { if($2 < 0 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
+  | tk_SIZE xcst ',' xcst ';' { if($2 < 0 || $2 >= LDS_SIZE || $4 < 0 || $4 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
 
 suite_vars
   : suite_vars var ';'
   | var ';';
 
 var
-  : IDENT '=' xcst        { $$ = var_new($1, $3); }
-  | IDENT '*' '=' xcst    { $$->val *= $4; }
-  | IDENT '/' '=' xcst    { $$->val /= $4; }
-  | IDENT '-' '=' xcst    { $$->val -= $4; }
-  | IDENT '+' '=' xcst    { $$->val += $4; }
-  | IDENT '%' '=' xcst    { $$->val %= $4; };
+  : IDENT '=' xcst        { Tvar *v; if(v = vars_get(gl_pdt->vars, $1)) v->val = $1; else vars_chgOrAddEated(gl_pdt->vars, $1, $3); $$ = $1; }
+  | IDENT '*' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val *= $4 }
+  | IDENT '/' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val /= $4 }
+  | IDENT '-' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val -= $4 }
+  | IDENT '+' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val += $4 }
+  | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val %= $4 };
 
 for_args
   : IDENT "IN" intervalle
@@ -83,16 +79,19 @@ intervalle
   : '[' expr ':' expr ']'
   | '[' expr ':' expr ':' expr ']';
 
-pt : '(' xcst ',' xcst ')'  { $$ = (Tpoint){.x = $2, .y = $4}; };
+pt : '(' xcst ',' xcst ')'  { if(!lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
 
 suite_pt
   : suite_pt pt { pts_app_pt($$ = $1, $2); }
-  | pt          { pts_new_pt($1); };
+  | pt          { $$ = pts_new_pt($1); };
 
 serie_pt
-  : serie_pt '-' '-' '>' pt { pts_app_pt($$ = $1, $2); }
-  | serie_pt '-' '>' pt     { pts_app_pt($$ = $1, $2); }
-  | pt                      { pts_new_pt($1); };
+  : serie_pt suite_tirets '>' pt { pts_app_pt($$ = $1, $2); }
+  | pt                           { $$ = pts_new_pt($1); };
+
+suite_tirets
+  : suite_tirets '-'
+  | '-';
 
 suite_ptri
   : suite_ptri pt
@@ -111,8 +110,8 @@ dest_list
 dest : DIR pt;
 
 expr
-  : IDENT         { $$ = $1->val; }
-  | CNUM          { $$ = atoi($1); }
+  : IDENT
+  | CNUM
   | expr '+' expr { $$ = $1 + $3; }
   | expr '-' expr { $$ = $1 - $3; }
   | expr '*' expr { $$ = $1 * $3; }
@@ -124,7 +123,7 @@ expr
 
 xcst
   : IDENT         { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$ = v->val; }
-  | CNUM          { $$ = atoi($1); }
+  | CNUM          { $$ = $1; }
   | xcst '+' xcst { $$ = $1 + $3; }
   | xcst '-' xcst { $$ = $1 - $3; }
   | xcst '*' xcst { $$ = $1 * $3; }

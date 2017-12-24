@@ -3,7 +3,7 @@
 
 %%
 
-[0-9]+								{ return CNUM; }
+[0-9]+								{ yylval=atoi(yytext); return CNUM; }
 "SE"|"SW"|"NE"|"NW"|"N"|"S"|"W"|"E"	{ return DIR; }
 "WALL"|"TOGGLE"|"UNWALL"			{ return tk_INST; }
 "SIZE"								{ return tk_SIZE; }
