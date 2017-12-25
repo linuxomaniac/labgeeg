@@ -75,6 +75,12 @@ extern void lds_draw_pt (Tlds* ds, TdrawOpt dopt, Tpoint pt)
             else ASSERT_MESS();
 #endif
             break;
+        case LG_DrawIn:
+            ds->squares[pt.x][pt.y].kind=LDS_IN;
+            break;
+        case LG_DrawOut:
+            ds->squares[pt.x][pt.y].kind=LDS_OUT;
+            break;;
 #if ASSERT_ENABLED
         default: ASSERT_MESS();
 #endif
@@ -168,7 +174,7 @@ static void lds_dump_TOP(Tlds* ds, FILE* ostream,int hlen)
     char l_bdTx = ' '; // bdTx
     char l_bdTe = ' '; // bdTe
     int x;
-    char buf[10];
+    char buf[11];
     fprintf(ostream,"     %c",l_bdTs);
     for (x=0 ; x<ds->dx ; x+=1) {
         if (x!=0)

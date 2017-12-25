@@ -48,7 +48,7 @@ extern void   lds_free(Tlds *ds);
 
 // drawing mode
 typedef enum {
-    LG_DrawWall, LG_DrawUnwall, LG_DrawToggle
+    LG_DrawWall, LG_DrawUnwall, LG_DrawToggle, LG_DrawIn, LG_DrawOut
 } TdrawOpt;
 
 // wind rose 
@@ -70,6 +70,7 @@ typedef struct {
 extern TwrInfo wri_t[];
 
 extern Cstr   wr_uname(Twr wrd);
+extern Twr wr_fromstr(char *str);
 extern Tpoint wr_next(Twr wrd, Tpoint from);
 
 /*======================================================================*/

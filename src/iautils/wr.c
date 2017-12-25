@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "top.h"
 
@@ -33,6 +34,30 @@ extern Cstr   wr_uname(Twr wrd)
         return wri_t[wrd].name;
     else
         return "??";
+}
+
+extern Twr wr_fromstr(char *str) {
+    Twr v = LG_WrUU;
+
+    if(strcmp(str, "N") == 0) {
+        v = LG_WrNN;
+    } else if(strcmp(str, "S") == 0) {
+        v = LG_WrSS;
+    } else if(strcmp(str, "E") == 0) {
+        v = LG_WrEE;
+    } else if(strcmp(str, "W") == 0) {
+        v = LG_WrWW;
+    } else if(strcmp(str, "NE") == 0) {
+        v = LG_WrNE;
+    } else if(strcmp(str, "NW") == 0) {
+        v = LG_WrNW;
+    } else if(strcmp(str, "SE") == 0) {
+        v = LG_WrSE;
+    } else if(strcmp(str, "SW") == 0) {
+        v = LG_WrSW;
+    }
+
+    return v;
 }
 
 extern Tpoint wr_next(Twr wrd, Tpoint from)

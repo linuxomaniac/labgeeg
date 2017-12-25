@@ -4,8 +4,6 @@
 %%
 
 [0-9]+								{ yylval=atoi(yytext); return CNUM; }
-"SE"|"SW"|"NE"|"NW"|"N"|"S"|"W"|"E"	{ return DIR; }
-"WALL"|"TOGGLE"|"UNWALL"			{ return tk_INST; }
 "SIZE"								{ return tk_SIZE; }
 "IN"								{ return tk_IN; }
 "OUT"								{ return tk_OUT; }
@@ -17,6 +15,10 @@
 "FOR"								{ return tk_FOR; }
 "WH"								{ return tk_WH; }
 "MD"								{ return tk_MD; }
+"WALL"								{ return tk_WALL; }
+"UNWALL"							{ return tk_UNWALL; }
+"TOGGLE"							{ return tk_TOGGLE; }
+"SE"|"SW"|"NE"|"NW"|"N"|"S"|"W"|"E"	{ yylval=wr_fromstr(yytext); if(yylval == LG_WrUU) yyerror("%s: unknown direction", yytext); return DIR; }
 [a-zA-Z][a-zA-Z0-9]*				{ return IDENT; }
 [ \n\t]								;
 #.*\n								;
