@@ -3,14 +3,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include "iautils/top.h"
 #include "iautils/vars.h"
+
+#define MIN(xx,yy) (((xx)<(yy))?(xx):(yy))
+#define MAX(xx,yy) (((xx)>(yy))?(xx):(yy))
 
 void add_wormhole(Tpoints *l);
 void add_md(Tpoint pt, Tpoint3s *l);
 void fill(TdrawOpt dopt);
 void draw_ptri(TdrawOpt dopt, Tpoint3s *l);
+void draw_rect(Tpoint p1, Tpoint p2, TdrawOpt dopt, bool F);
+void check_wall(Tpoint p);
 
 %}
 
@@ -45,35 +51,51 @@ void draw_ptri(TdrawOpt dopt, Tpoint3s *l);
 %%
 
 labyrinthe
-  : suite_vars inst_size suite_instructions
+  : suite_vars instruction_size suite_instructions
   | inst_size suite_instructions;
 
 suite_instructions
-  : suite_instructions instruction ';'
-  | instruction ';'
-  | tk_SHOW                             { lds_dump(gl_lds, stdout); };
+  : suite_instructions_murs suite_instructions_autres
+  | suite_instructions_murs
+  | suite_instructions_autres;
 
-instruction
+instruction_show
+  | tk_SHOW                                       { lds_dump(gl_lds, stdout); };
+
+suite_instructions_autes
+  : suite_instructions_autres instruction_autre ';'
+  | instruction_autre ';'
+
+instruction_autre
   : ';'
+  | instruction_show
   | tk_IN pt                                      { if(lds_checkborder_pt(gl_lds, $2)) yyerror("The entry point must be located on the border!"); lds_draw_pt(gl_lds, LG_DrawIn, $2); }
   | tk_OUT suite_pt                               { unsigned int i; for(i = 0; i < $2->nb; i++) { if(lds_checkborder_pt(gl_lds, $2->t[i])) yyerror("Exit points must be located on the border!"); } lds_draw_pts(gl_lds, LG_DrawOut, $2); pts_free($2); }
+  | tk_WH serie_pt                                { add_wormhole($2); pts_free($2); }
+  | tk_MD pt dest_list                            { add_md($2, $3); pt3s_free($3); };
+
+suite_instructions_murs
+  : suite_instructions_murs instruction_mur ';'
+  | instruction_mur ';'
+
+instruction_mur
+  : ';'
+  | instruction_show
   | inst                                          { fill($1); }
   | inst tk_PTA suite_pt                          { lds_draw_pts(gl_lds, $1, $3); pts_free($3); }
   | inst tk_PTD pt suite_ptri                     { draw_ptri($1, $3); pt3s_free($3); }
-  | inst tk_R pt pt
-  | inst tk_R tk_F pt pt
-  | inst tk_FOR for_args '(' expr ',' expr ')'
-  | tk_WH serie_pt                                { add_wormhole($2); pts_free($2); }
-  | tk_MD pt dest_list;                           { add_md($2, $3); pt3s_free($3); }
+  | inst tk_R pt pt                               { draw_rect($3, $4, $1, false); }
+  | inst tk_R tk_F pt pt                          { draw_rect($4, $5, $1, false); }
+  | inst tk_FOR for_args '(' expr ',' expr ')';
 
 inst
   : tk_WALL   { $$ = LG_DrawWall; }
   | tk_UNWALL { $$ = LG_DrawUnwall; }
   | tk_TOGGLE { $$ = LG_DrawToggle; };
 
-inst_size
-  : tk_SIZE xcst ';'          { if($2 < 0 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
-  | tk_SIZE xcst ',' xcst ';' { if($2 < 0 || $2 >= LDS_SIZE || $4 < 0 || $4 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
+instruction_size
+  : tk_SIZE xcst ';'          { if($2 < 2 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
+  | tk_SIZE xcst ',' xcst ';' { if($2 < 2 || $2 >= LDS_SIZE || $4 < 0 || $4 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
 
 suite_vars
   : suite_vars var ';'
@@ -94,6 +116,8 @@ for_args
 intervalle
   : '[' expr ':' expr ']'
   | '[' expr ':' expr ':' expr ']';
+  | '[' expr ':' expr '['
+  | '[' expr ':' expr ':' expr '[';
 
 pt : '(' xcst ',' xcst ')'  { if(lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
 
@@ -168,7 +192,15 @@ void add_wormhole(Tpoints *l) {
     yyerror("Not enough points specified (wanted at least 2, got %d", l->nb);
   }
 
+  checkwall(l->t[0]);
+
   for(i = 1; i < l->nb; i++) {
+    if(lds_md_or_wh_pt(l->t[i - 1])) {
+      yyerror("A MD or WH is already present on (%d, %d)", l->t[i - 1].x, l->t[i - 1].y);
+    }
+
+    checkwall(l->t[i]);
+
     pdt_wormhole_add(gl_pdt, l->t[i - 1], l->t[i]);
   }
 }
@@ -177,12 +209,22 @@ void add_md(Tpoint pt, Tpoint3s *l) {
   unsigned int i;
   Tpoint p;
   Tpoint3 p3;
-  Tsqmd* md = pdt_magicdoor_getcreate(gl_pdt, gl_lds, pt);
+  Tsqmd* md;
+
+  if(lds_md_or_wh_pt(pt)) {
+    yyerror("A MD or WH is already present on (%d, %d)", pt.x, pt.y);
+  }
+
+  check_wall(pt);
+
+  md = pdt_magicdoor_getcreate(gl_pdt, gl_lds, pt);
 
   for(i = 0; i < l->nb; i++) {
     p3 = l->t[i];
     p.x = p3.x;
     p.y = p3.y;
+
+    check_wall(p);
 
     lds_sqmd_update(md, p3.z, p);
   }
@@ -218,5 +260,31 @@ void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
     }
 
     lds_draw_xy(gl_lds, dopt, x, y);
+  }
+}
+
+void draw_rect(Tpoint p1, Tpoint p2, TdrawOpt dopt, bool F) {
+  Tpoint pmin, pmax;
+  unsigned int x, y;
+
+  pmin.x = MIN(p1.x, p2.x);
+  pmin.y = MIN(p1.y, p2.y);
+  pmax.x = MAX(p1.x, p2.x);
+  pmax.y = MAX(p1.y, p2.y);
+
+  for(x = pmin.x; x <= pmax.x; x++) {
+    for(y = pmin.y; x <= pmax.y; y++) {
+      if(F || (x == p1.x || x == p2.x || y == p1.y || y == p2.y)) {
+        lds_draw_xy(gl_lds, dopt, x, y);
+      }
+    }
+  }
+}
+
+void check_wall(Tpoint p) {
+  if(lds_check_pt(p) == LDS_WALL) {
+    lds_draw_pt(gl_lds, LG_DrawUnwall, pt);
+
+    fprintf(stderr, "Warning: a wall was overwritten at (%d, %d)\n", pt.x, pt.y);
   }
 }

@@ -76,6 +76,12 @@ extern void lds_draw_xy (Tlds* ds, TdrawOpt dopt, int x, int y);
 extern void lds_draw_pt (Tlds* ds, TdrawOpt dopt, Tpoint  pt);
 extern void lds_draw_pts(Tlds* ds, TdrawOpt dopt, Tpoints*pts);
 
+/* getter */
+/* returns the type of the square */
+extern TdrawOpt lds_get_pt(Tlds* ds, Tpoint pt);
+/* returns true when the point is an entrance of a wh or a md */
+extern int lds_md_or_wh_pt(Tlds* ds, Tpoint pt);
+
 /*======================================================================*/
 /*= check                                                              =*/
 /*=                                                                    =*/
