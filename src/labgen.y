@@ -40,10 +40,10 @@ void check_wall(Tpoint p);
   Twr direction;
 }
 
-%type <lpts> suite_pt
-%type <lpt3s> suite_ptri dest_list
+%type <lpts> suite_pt serie_pt
+%type <lpt3s> suite_ptri dest_list range
 %type <tpt> pt
-%type <entier> xcst
+%type <entier> xcst ri
 %type <chaine> IDENT CNUM
 %type <insttype> inst
 %type <direction> DIR;
@@ -52,7 +52,7 @@ void check_wall(Tpoint p);
 
 labyrinthe
   : suite_vars instruction_size suite_instructions
-  | inst_size suite_instructions;
+  | instruction_size suite_instructions;
 
 suite_instructions
   : suite_instructions_murs suite_instructions_autres
@@ -60,9 +60,9 @@ suite_instructions
   | suite_instructions_autres;
 
 instruction_show
-  | tk_SHOW                                       { lds_dump(gl_lds, stdout); };
+  : tk_SHOW                                       { lds_dump(gl_lds, stdout); };
 
-suite_instructions_autes
+suite_instructions_autres
   : suite_instructions_autres instruction_autre ';'
   | instruction_autre ';'
 
@@ -93,6 +93,10 @@ inst
   | tk_UNWALL { $$ = LG_DrawUnwall; }
   | tk_TOGGLE { $$ = LG_DrawToggle; };
 
+for_args
+  : IDENT tk_IN range
+  | IDENT for_args range;
+
 instruction_size
   : tk_SIZE xcst ';'          { if($2 < 2 || $2 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
   | tk_SIZE xcst ',' xcst ';' { if($2 < 2 || $2 >= LDS_SIZE || $4 < 0 || $4 >= LDS_SIZE) yyerrror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
@@ -102,22 +106,18 @@ suite_vars
   | var ';';
 
 var
-  : IDENT '=' xcst        { Tvar *v; if(v = vars_get(gl_pdt->vars, $1)) v->val = $1; else vars_chgOrAddEated(gl_pdt->vars, $1, $3); $$ = $1; }
-  | IDENT '*' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val *= $4 }
-  | IDENT '/' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val /= $4 }
-  | IDENT '-' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val -= $4 }
-  | IDENT '+' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val += $4 }
-  | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); $$->val %= $4 };
+  : IDENT '=' xcst        { Tvar *v; if(v = vars_get(gl_pdt->vars, $1)) v->val = $1; else vars_chgOrAddEated(gl_pdt->vars, $1, $3); }
+  | IDENT '*' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val *= $4 }
+  | IDENT '/' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val /= $4 }
+  | IDENT '-' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val -= $4 }
+  | IDENT '+' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val += $4 }
+  | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val %= $4 };
 
-for_args
-  : IDENT tk_IN intervalle
-  | IDENT for_args intervalle;
-
-intervalle
-  : '[' expr ':' expr ']'
-  | '[' expr ':' expr ':' expr ']';
-  | '[' expr ':' expr '['
-  | '[' expr ':' expr ':' expr '[';
+range
+  : '[' CNUM ':' CNUM ']'             { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.x = $2, .y = $4, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM ']'   { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.x = $2, .y = $4, .z = $6}; }
+  | '[' CNUM ':' CNUM '['             { int v = $4 -1; if($2 > v) yyerror("Value error: %d > %d", $2, v); $$ = (Tpoint3){.x = $2, .y = v, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM '['   { int v = $4 - 1; if($2 > v) yyerror("Value error: %d > %d", $2, v); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.x = $2, .y = v, .z = $6}; };
 
 pt : '(' xcst ',' xcst ')'  { if(lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
 
@@ -126,7 +126,7 @@ suite_pt
   | pt          { $$ = pts_new_pt($1); };
 
 serie_pt
-  : serie_pt suite_tirets '>' pt { pts_app_pt($$ = $1, $2); }
+  : serie_pt suite_tirets '>' pt { pts_app_pt($$ = $1, $4); }
   | pt                           { $$ = pts_new_pt($1); };
 
 suite_tirets
@@ -137,15 +137,15 @@ suite_ptri
   : suite_ptri pt         { pt3s_app_p2z($$ = $1, $2, 1); }
   | suite_ptri pt ':' ri  { pt3s_app_p2z($$ = $1, $2, $4); }
   | pt                    { $$ = pt3s_new_p2z($1, 1); }
-  | pt ':' ri;            { $$ = pt3s_new_p2z($1, $3); }
+  | pt ':' ri             { $$ = pt3s_new_p2z($1, $3); };
 
 ri
   : xcst
-  | '*';
+  | '*'   { $$ = -1; };
 
 dest_list
   : dest_list DIR pt  { pt3s_app_p2z($$ = $1, $3, $2); }
-  | DIR pt;           { $$ = pt3s_new_p2z($2, $1); };
+  | DIR pt            { $$ = pt3s_new_p2z($2, $1); };
 
 expr
   : IDENT
@@ -240,9 +240,8 @@ void fill(TdrawOpt dopt) {
   }
 }
 
-/* TODO : fix ça pour gérer les étoiles '*' */
 void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
-  unsigned int i, x = 0, y = 0;
+  unsigned int i, x = 0, y = 0, k;
   Tpoint p;
 
   for(i = 0; i < l->nb; i++) {
@@ -252,14 +251,20 @@ void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
       yyerror("(0, 0): invalid move");
     }
 
-    x += p.x;
-    y += p.y;
+    for(k = 0; k < pt.z || pt.z == -1; k++) {
+      x += p.x;
+      y += p.y;
 
-    if(lds_check_xy(gl_lds, x, y)) {
-      yyerror("(%d, %d): move out of bounds", x, y);
+      if(lds_check_xy(gl_lds, x, y)) {
+        if(p.z == -1) {
+          break;
+        } else {
+          yyerror("(%d, %d): move out of bounds", x, y);
+        }
+      }
+
+      lds_draw_xy(gl_lds, dopt, x, y);
     }
-
-    lds_draw_xy(gl_lds, dopt, x, y);
   }
 }
 
