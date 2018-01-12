@@ -10,7 +10,7 @@ labgen.c: labgen.y
 	bison -o $@ $<
 
 labgen.o: labgen.c labgen.yy.c
-	gcc $(CFLAGS) -c -o $@ labgen.c
+	gcc $(CFLAGS) -c -o $@ $<
 
 # %.o: %.c %.h
 # 	gcc $(CFLAGS) -c -o $@ $<

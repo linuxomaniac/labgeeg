@@ -19,9 +19,10 @@
 /*= Parser DaTa                                                        =*/
 
 struct _Tpdt {
-    Tvars*   vars;
+    Tvars*   vars, fvars;
     Tpoints* in;
     Tpoints* out;
+    Tpoint3s* frgs;
     // worm holes
     int whnb;
     Tpoint whin [PDT_WHSIZE]; // worm hole inputs
