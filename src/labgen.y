@@ -1,7 +1,9 @@
 %{
 #define _POSIX_C_SOURCE 1
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
 
@@ -14,12 +16,15 @@
 #define MIN(xx,yy) (((xx)<(yy))?(xx):(yy))
 #define MAX(xx,yy) (((xx)>(yy))?(xx):(yy))
 
+int yylex();
+
 void add_wormhole(Tpoints *l);
 void add_md(Tpoint pt, Tpoint3s *l);
 void fill(TdrawOpt dopt);
 void draw_ptri(TdrawOpt dopt, Tpoint3s *l);
 void draw_rect(Tpoint p1, Tpoint p2, TdrawOpt dopt, bool F);
 void check_wall(Tpoint p);
+void for_function(TdrawOpt dopt, int level, int max_level, Texpr* e1, Texpr* e2);
 
 %}
 
@@ -39,15 +44,16 @@ void check_wall(Tpoint p);
   Tpoints* lpts;
   Tpoint3s* lpt3s;
   Tpoint tpt;
+  Tpoint3 tpt3;
   TdrawOpt insttype;
   Twr direction;
   Texpr* expressionarbreuse;
 }
 
 %type <lpts> suite_pt serie_pt
-/* %type <lpt3s> suite_ptri dest_list range */
 %type <lpt3s> suite_ptri dest_list
 %type <tpt> pt
+%type <tpt3> range
 %type <entier> xcst ri CNUM for_args
 %type <chaine> IDENT 
 %type <insttype> inst
@@ -90,7 +96,7 @@ instruction_mur
   | inst tk_PTD pt suite_ptri                     { draw_ptri($1, $4); pt3s_free($4); }
   | inst tk_R pt pt                               { draw_rect($3, $4, $1, false); }
   | inst tk_R tk_F pt pt                          { draw_rect($4, $5, $1, true); }
-  | inst tk_FOR for_args '(' expr ',' expr ')'    { fonction_for($1, $3, $5, $7); };
+  | inst tk_FOR for_args '(' expr ',' expr ')'    { for_function($1, 0, $3, $5, $7); };
 
 inst
   : tk_WALL   { $$ = LG_DrawWall; }
@@ -98,8 +104,8 @@ inst
   | tk_TOGGLE { $$ = LG_DrawToggle; };
 
 for_args
-  : IDENT tk_IN range		{ $$ = 1; vars_chgOrAddEated (gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); }
-  | IDENT for_args range	{ $$ = $2 + 1; vars_chgOrAddEated (gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); };
+  : IDENT tk_IN range		{ $$ = 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); }
+  | IDENT for_args range	{ $$ = $2 + 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); };
 
 instruction_size
   : tk_SIZE xcst ';'          { if($2 < 2 || $2 >= LDS_SIZE) yyerror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
@@ -118,10 +124,10 @@ var
   | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val %= $4 ;};
 
 range
-  : '[' CNUM ':' CNUM ']'             { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.x = $2, .y = $4, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM ']'   { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.x = $2, .y = $4, .z = $6}; }
-  | '[' CNUM ':' CNUM '['             { int v = $4 -1; if($2 > v) yyerror("Value error: %d > %d", $2, v); $$ = (Tpoint3){.x = $2, .y = v, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM '['   { int v = $4 - 1; if($2 > v) yyerror("Value error: %d > %d", $2, v); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.x = $2, .y = v, .z = $6}; };
+  : '[' CNUM ':' CNUM ']'             { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM ']'   { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; }
+  | '[' CNUM ':' CNUM '['             { int v = $4 -1; if($2 > v) yyerror("Value error: %d > %d", $2, v); $$ = (Tpoint3){.xy.x = $2, .xy.y = v, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM '['   { int v = $4 - 1; if($2 > v) yyerror("Value error: %d > %d", $2, v); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = v, .z = $6}; };
 
 pt : '(' xcst ',' xcst ')'  { if(lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
 
@@ -298,8 +304,41 @@ void check_wall(Tpoint p) {
   }
 }
 
-void fonction_for(TdrawOpt dopt, int n, Texpr* e1, Texpr* e2) {
-	
+
+int for_function_eval(Texpr *e) {
+  const char uv[100];
+  int val = 0, ret = expr_eval(e, gl_pdt->fvars, &val, (const char **)&uv);
+
+  switch(ret) {
+    case 1:
+      yyerror("Expression eval error: Undefined variable %s\n", uv);
+      break;
+
+    case 2:
+      yyerror("Expression eval error: Zero division\n");
+      break;
+  }
+
+  return val;
 }
 
+void for_function(TdrawOpt dopt, int level, int max_level, Texpr* e1, Texpr* e2) {
+  if(level == max_level) {
+    int x, y;
 
+    x = for_function_eval(e1);
+    y = for_function_eval(e2);
+
+    if(!lds_check_xy(gl_lds, x, y)) {
+      lds_draw_xy(gl_lds, dopt, x, y);
+    }
+  } else {
+    /* Fetch the variable value in the bintree by its name in the array given the index (level) */
+    int *var = &(vars_get(gl_pdt->fvars, gl_pdt->fvars_names[level])->val);
+    Tpoint3 *rg = &(gl_pdt->frgs->t[max_level - level - 1]);
+
+    for(*var = rg->xy.x; *var < rg->xy.y; *var += rg->z) {
+      for_function(dopt, level + 1, max_level, e1, e2);
+    }
+  }
+}

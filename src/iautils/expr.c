@@ -1,33 +1,35 @@
+#include <stdlib.h>
+#include "top.h"
 #include "expr.h"
 
-static Texpr* expr_new(TexprKind kd, Texpr* lc, Texpr* rc, Texpr* child) {
+static Texpr* expr_new(TexprKind kd) {
 	Texpr *expr = calloc(1, sizeof(*expr));
 	expr->e_kd = kd;
-	expr->e_rc = rc;
-	expr->e_lc = lc;
-	expr->e_child = child;
 
 	return expr;
 }
 
 Texpr* expr_cst(int cst) {
-	Texpr *expr = new_expr(EXPD_CST, NULL, NULL, NULL);
+	Texpr *expr = expr_new(EXPKD_CST);
 	expr->e_cst = cst;
 	return expr;
 }
 
 Texpr* expr_varEated(char* var) {
-	Texpr *expr = new_expr(EXPD_VAR, NULL, NULL, NULL);
+	Texpr *expr = expr_new(EXPKD_VAR);
 	expr->e_var = var;
 	return expr;
 }
 
 Texpr* expr_uniOp(TexprKind kd, Texpr* child) {
-	Texpr *expr = new_expr(kd, NULL, NULL, child);
+	Texpr *expr = expr_new(kd);
+	expr->e_child = child;
 	return expr;
 }
 Texpr* expr_binOp(TexprKind kd, Texpr* lc, Texpr* rc) {
-	Texpr *expr = new_expr(kd, lc, rc, NULL);
+	Texpr *expr = expr_new(kd);
+	expr->e_lc = lc;
+	expr->e_rc = rc;
 	return expr;
 }
 
@@ -51,7 +53,7 @@ int expr_eval(const Texpr* expr, const Tvars* vars, int* val, Cstr*uv) {
 
 	switch(expr->e_kd) {
 		case EXPKD_NEG:
-			if(ret = expr_eval(expr->e_child, vars, val, uv)) {
+			if((ret = expr_eval(expr->e_child, vars, val, uv))) {
 				return ret;
 			}
 			*val *= -1;
@@ -71,40 +73,40 @@ int expr_eval(const Texpr* expr, const Tvars* vars, int* val, Cstr*uv) {
 			break;
 
 		case EXPKD_PLUS:
-			if(ret = expr_eval(expr->e_lc, vars, &lr, uv)) {
+			if((ret = expr_eval(expr->e_lc, vars, &lr, uv))) {
 				return ret;
 			}
-			if(ret = expr_eval(expr->e_lr, vars, &rr, uv)) {
+			if((ret = expr_eval(expr->e_rc, vars, &rr, uv))) {
 				return ret;
 			}
 			*val = lr + rr;
 			break;
 
 		case EXPKD_MINUS:
-			if(ret = expr_eval(expr->e_lc, vars, &lr, uv)) {
+			if((ret = expr_eval(expr->e_lc, vars, &lr, uv))) {
 				return ret;
 			}
-			if(ret = expr_eval(expr->e_lr, vars, &rr, uv)) {
+			if((ret = expr_eval(expr->e_rc, vars, &rr, uv))) {
 				return ret;
 			}
 			*val = lr - rr;
 			break;
 
 		case EXPKD_TIME:
-			if(ret = expr_eval(expr->e_lc, vars, &lr, uv)) {
+			if((ret = expr_eval(expr->e_lc, vars, &lr, uv))) {
 				return ret;
 			}
-			if(ret = expr_eval(expr->e_lr, vars, &rr, uv)) {
+			if((ret = expr_eval(expr->e_rc, vars, &rr, uv))) {
 				return ret;
 			}
 			*val = lr * rr;
 			break;
 
 		case EXPKD_DIV:
-			if(ret = expr_eval(expr->e_lc, vars, &lr, uv)) {
+			if((ret = expr_eval(expr->e_lc, vars, &lr, uv))) {
 				return ret;
 			}
-			if(ret = expr_eval(expr->e_lr, vars, &rr, uv)) {
+			if((ret = expr_eval(expr->e_rc, vars, &rr, uv))) {
 				return ret;
 			}
 			if(!rr) {
@@ -114,10 +116,10 @@ int expr_eval(const Texpr* expr, const Tvars* vars, int* val, Cstr*uv) {
 			break;
 
 		case EXPKD_MOD:
-			if(ret = expr_eval(expr->e_lc, vars, &lr, uv)) {
+			if((ret = expr_eval(expr->e_lc, vars, &lr, uv))) {
 				return ret;
 			}
-			if(ret = expr_eval(expr->e_lr, vars, &rr, uv)) {
+			if((ret = expr_eval(expr->e_rc, vars, &rr, uv))) {
 				return ret;
 			}
 			if(!rr) {
@@ -128,7 +130,7 @@ int expr_eval(const Texpr* expr, const Tvars* vars, int* val, Cstr*uv) {
 
 		case EXPKD_NONE:
 		default:
-			*v = 0;
+			*val = 0;
 			break;
 	}
 	

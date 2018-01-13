@@ -19,6 +19,7 @@ extern Tpdt * pdt_new ()
     Tpdt* pdt = u_malloc0( sizeof(*pdt) );
     pdt->vars = vars_new();
     pdt->fvars = vars_new();
+    pdt->fvars_index = 0;
 	pdt->frgs = pt3s_new();
     pdt->out  = pts_new();
     pdt->md   = pts_new();
@@ -27,6 +28,10 @@ extern Tpdt * pdt_new ()
 
 extern void   pdt_free(Tpdt *pdt)
 {
+    for(int i = 0; i < PDT_FVARSSIZE && pdt->fvars_names[i] != NULL; i++) {
+        free(pdt->fvars_names[i]);
+    }
+
     vars_free( pdt->vars );
     vars_free( pdt->fvars );
 	pt3s_free( pdt->frgs );

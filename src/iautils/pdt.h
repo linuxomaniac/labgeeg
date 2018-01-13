@@ -14,15 +14,19 @@
 #include "lds.h"
 
 #define PDT_WHSIZE 20
+#define PDT_FVARSSIZE 100
 
 /*======================================================================*/
 /*= Parser DaTa                                                        =*/
 
 struct _Tpdt {
-    Tvars*   vars, fvars;
+    Tvars *vars, *fvars;
+    char *fvars_names[PDT_FVARSSIZE]; // we need an array to store in order
+                                     // the variables names
+    int fvars_index;
     Tpoints* in;
     Tpoints* out;
-    Tpoint3s* frgs;
+    Tpoint3s *frgs;
     // worm holes
     int whnb;
     Tpoint whin [PDT_WHSIZE]; // worm hole inputs
