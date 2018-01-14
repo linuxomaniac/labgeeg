@@ -19,7 +19,7 @@
 "UNWALL"							{ return tk_UNWALL; }
 "TOGGLE"							{ return tk_TOGGLE; }
 "SE"|"SW"|"NE"|"NW"|"N"|"S"|"W"|"E"	{ yylval.direction=wr_fromstr(yytext); if(yylval.direction == LG_WrUU) yyerror("%s: unknown direction", yytext); return DIR; }
-[a-zA-Z][a-zA-Z0-9]*				{ return IDENT; }
+[a-zA-Z][a-zA-Z0-9]*				{ yylval.chaine=strdup(yytext); return IDENT; }
 [ \n\t]								;
 #.*\n								;
 .									return *yytext;

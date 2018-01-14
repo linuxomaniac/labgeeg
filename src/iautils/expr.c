@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "top.h"
 #include "expr.h"
 
@@ -21,6 +22,12 @@ Texpr* expr_varEated(char* var) {
 	return expr;
 }
 
+Texpr* expr_varCloned(Cstr var) {
+	Texpr *expr = expr_new(EXPKD_VAR);
+	expr->e_var = strdup(var);
+	return expr;
+}
+
 Texpr* expr_uniOp(TexprKind kd, Texpr* child) {
 	Texpr *expr = expr_new(kd);
 	expr->e_child = child;
@@ -34,6 +41,10 @@ Texpr* expr_binOp(TexprKind kd, Texpr* lc, Texpr* rc) {
 }
 
 void expr_free(Texpr* expr) {
+	if(expr->e_kd == EXPKD_VAR) {
+		free(expr->e_var);
+	}
+
 	if(expr->e_lc) {
 		expr_free(expr->e_lc);
 	}

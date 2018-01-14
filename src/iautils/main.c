@@ -91,11 +91,9 @@ int main(int argc, char*argv[])
     //yydestroy();
 
     // check semantique
-    #if 0
     if ( lg_sem(gl_lds, gl_pdt) )
         return 1; // mess. printed by lg_sem
     pdt_free( gl_pdt );
-    #endif
 
     // génération of labres lex & yacc codes
     // into lfname and yfname files

@@ -30,12 +30,14 @@ extern int lg_sem(Tlds*ds, const Tpdt*pdt) {
 
 			if(sq->kind == LDS_IN) {
 				if(sq->opt == LDS_OptWH) {
-					yyerror("An entrance can't be on a WH entrance!");
+					fprintf(stderr, "An entrance can't be on a WH entrance!\n");
+					return 1;
 				}
 				e_count += 1;
 			} else if(sq->kind == LDS_OUT) {
 				if(sq->opt == LDS_OptWH) {
-					yyerror("An exit can't be on a WH entrance!");
+					fprintf(stderr, "An exit can't be on a WH entrance!\n");
+					return 1;
 				}
 				o_count += 1;
 			}
@@ -43,11 +45,13 @@ extern int lg_sem(Tlds*ds, const Tpdt*pdt) {
 	}
 
 	if(e_count != 1) {
-		yyerror("Exactly one entrance needed!");
+		fprintf(stderr, "Exactly one entrance needed!\n");
+		return 1;
 	}
 
 	if(o_count == 0) {
-		yyerror("At least one exit needed!");
+		fprintf(stderr, "At least one exit needed!\n");
+		return 1;
 	}
 
 	/* Vérification de la RS-10 */
@@ -58,7 +62,8 @@ extern int lg_sem(Tlds*ds, const Tpdt*pdt) {
 	}
 
 	if(y) {
-		yyerror("Infinite loop between worm holes!");
+		fprintf(stderr, "Infinite loop between worm holes!\n");
+		return 1;
 	}
 
 	return 0;

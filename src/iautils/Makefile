@@ -4,7 +4,7 @@ LDFLAGS =
 %.o: %.c %.h
 	gcc $(CFLAGS) -c -o $@ $<
 
-iautils.o: lds.o pdt.o points.o util.o vars.o wr.o expr.o main.o
+iautils.o: lds.o pdt.o points.o util.o vars.o wr.o expr.o sem.o main.o
 	ld -r -o $@ $^
 
 clean:
