@@ -13,7 +13,6 @@
 #include "points.h"
 #include "lds.h"
 
-#define PDT_WHSIZE 20
 #define PDT_FVARSSIZE 100
 
 /*======================================================================*/
@@ -29,9 +28,8 @@ struct _Tpdt {
     Tpoint3s *frgs;
     // worm holes
     int whnb;
-    Tpoint whin [PDT_WHSIZE]; // worm hole inputs
-    Tpoint whout[PDT_WHSIZE]; // worm hole outputs
-    // magic holes
+    Tpoints* wh; // points that have a worm hole
+    // magic doors
     Tpoints*md; // points that have a magic door.
                 // associated data are stored in the lds structure
 };
@@ -57,12 +55,13 @@ extern int  pdt_var_get(Tpdt* pdt, Cstr vn, int*v);
 
 // if the the worm hole src --> dest exists the function return dest.
 // Otherwise it returns the NULL pointer.
-const Tpoint* pdt_wormhole_dest(const Tpdt*pdt, Tpoint src);
-void    pdt_wormhole_add(Tpdt*pdt, Tpoint src, Tpoint dest);
+Tpoint* pdt_wormhole_get(const Tpdt*pdt, Tpoint src);
+void    pdt_wormhole_create(Tpdt*pdt, Tlds*ds, Tpoint src, Tpoint dest);
 
 // Returns the md parameters of the pt square.
 // If it not yet exists it is created and attached to the pt square.
 // So a successive calls with the same pt return the same object.
+Tpoint* pdt_magicdoor_get(const Tpdt*pdt, Tpoint src);
 Tsqmd*  pdt_magicdoor_getcreate(Tpdt*pdt,Tlds*ds,Tpoint pt);
 
 /*======================================================================*/

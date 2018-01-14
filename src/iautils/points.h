@@ -62,6 +62,10 @@ extern void     pts_app_pt (Tpoints* s, Tpoint pt);
 extern void     pts_app_xy (Tpoints* s, int x, int y);
 extern void     pts_app_pts(Tpoints* s, const Tpoints* pts);
 
+/* Returns 1 when point is found */
+extern int pts_mem_pt(Tpoints *s, Tpoint pt);
+extern int pts_mem_xy(Tpoints *s, int x, int y);
+
 // suppress the point duplication (t[i]==t[i+k] ==> t[i+k] is suppressed)
 extern void     pts_uniq(Tpoints* s);
 

@@ -55,6 +55,25 @@ extern void     pts_app_pts(Tpoints* s, const Tpoints* pts)
 
 /*======================================================================*/
 
+/* Returns 1 when point is found */
+extern int pts_mem_pt(Tpoints *s, Tpoint pt) {
+    int i;
+
+    for(i = 0; i < s->nb; i++) {
+        if(pt_cmp(&s->t[i], &pt) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+extern int pts_mem_xy(Tpoints *s, int x, int y) {
+    Tpoint pt = {x, y};
+
+    return pts_mem_pt(s, pt);
+}
+
 // t[i]==t[i+k] ==> t[i+k] is suppressed
 extern void     pts_uniq(Tpoints* s)
 {

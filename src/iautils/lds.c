@@ -94,23 +94,6 @@ extern void lds_draw_pts(Tlds* ds, TdrawOpt dopt, Tpoints*pts)
         lds_draw_pt(ds,dopt,pts->t[i]);
 }
 
-/* get */
-extern TdrawOpt lds_get_xy (Tlds* ds, Tpoint pt) {
-    if(!lds_check_pt(ds, pt)) {
-        return ds->squares[pt.x][pt.y].kind;
-    }
-
-    return LDS_FREE;
-}
-
-extern int lds_md_or_wh_pt(Tlds* ds, Tpoint pt) {
-    if(!lds_check_pt(ds, pt)) {
-        return !(ds->squares[pt.x][pt.y].opt == LDS_OptNone);
-    }
-
-    return 0;
-}
-
 /*======================================================================*/
 /*= check                                                              =*/
 /*=                                                                    =*/

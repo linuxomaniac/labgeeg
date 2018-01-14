@@ -205,13 +205,13 @@ void add_wormhole(Tpoints *l) {
   check_wall(l->t[0]);
 
   for(i = 1; i < l->nb; i++) {
-    if(lds_md_or_wh_pt(gl_lds, l->t[i - 1])) {
+    if(pdt_magicdoor_get(gl_pdt, l->t[i - 1]) || pdt_wormhole_get(gl_pdt, l->t[i - 1])) {
       yyerror("A MD or WH is already present on (%d, %d)", l->t[i - 1].x, l->t[i - 1].y);
     }
 
     check_wall(l->t[i]);
 
-    pdt_wormhole_add(gl_pdt, l->t[i - 1], l->t[i]);
+    pdt_wormhole_create(gl_pdt, gl_lds, l->t[i - 1], l->t[i]);
   }
 }
 
@@ -221,7 +221,7 @@ void add_md(Tpoint pt, Tpoint3s *l) {
   Tpoint3 p3;
   Tsqmd* md;
 
-  if(lds_md_or_wh_pt(gl_lds, pt)) {
+  if(pdt_magicdoor_get(gl_pdt, pt) || pdt_wormhole_get(gl_pdt, pt)) {
     yyerror("A MD or WH is already present on (%d, %d)", pt.x, pt.y);
   }
 
@@ -253,6 +253,14 @@ void fill(TdrawOpt dopt) {
 void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
   unsigned int i, x = 0, y = 0, k;
   Tpoint3 pt;
+  Tpoints *processed;
+
+  /* On va conserver une trace des points modifiés, ce qui évite de faire un toggle
+     deux fois sur le même point. */
+
+  if(dopt == LG_DrawToggle) {
+    processed = pts_new();
+  }
 
   for(i = 0; i < l->nb; i++) {
     pt = l->t[i];
@@ -273,8 +281,19 @@ void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
         }
       }
 
-      lds_draw_xy(gl_lds, dopt, x, y);
+      if(dopt == LG_DrawToggle) {
+        if(!pts_mem_xy(processed, x, y)) {
+          pts_app_xy(processed, x, y);
+          lds_draw_xy(gl_lds, dopt, x, y);
+        }
+      } else {
+        lds_draw_xy(gl_lds, dopt, x, y);
+      }
     }
+  }
+
+  if(dopt == LG_DrawToggle) {
+    pts_free(processed);
   }
 }
 
