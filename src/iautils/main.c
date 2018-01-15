@@ -85,15 +85,16 @@ int main(int argc, char*argv[])
     // parsing
     extern FILE* yyin;
     yyin = param.instream;
+    #if 0
     if ( yyparse() )
         return 1; // mess. printed by yyparse
     fclose( param.instream );
     //yydestroy();
 
-    // check semantique
     if ( lg_sem(gl_lds, gl_pdt) )
         return 1; // mess. printed by lg_sem
     pdt_free( gl_pdt );
+    #endif
 
     // génération of labres lex & yacc codes
     // into lfname and yfname files
@@ -114,10 +115,10 @@ int main(int argc, char*argv[])
                 gl_progname,yfname,strerror(errno));
         exit(1);
     }
-    /* TODO */
-    exit(0);
-    if ( lg_gen(gl_lds,lstream,ystream,lcfname) )
-        return 1; // mess. printed by lg_gen
+    if(lg_gen(gl_lds,lstream,ystream,lcfname)) {
+        perror("lg_gen: ");  /* file write errors */
+        return 1;
+    }
     fclose(lstream); fclose(ystream);
     lds_free( gl_lds );
 
@@ -133,7 +134,7 @@ int main(int argc, char*argv[])
     sprintf(cmd,"gcc -g -o %s %s",param.outfilename,ycfname);
     if ( system(cmd)!=0 ) {
         u_error("parser generation fails: %s",cmd);
-        u_error("no way from input to output",cmd);
+        u_error("no path from input to output");
         status = 1;
     }
 #if 0

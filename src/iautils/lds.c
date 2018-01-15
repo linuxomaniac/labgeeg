@@ -77,6 +77,7 @@ extern void lds_draw_pt (Tlds* ds, TdrawOpt dopt, Tpoint pt)
             break;
         case LG_DrawIn:
             ds->squares[pt.x][pt.y].kind=LDS_IN;
+            ds->in = pt;
             break;
         case LG_DrawOut:
             ds->squares[pt.x][pt.y].kind=LDS_OUT;

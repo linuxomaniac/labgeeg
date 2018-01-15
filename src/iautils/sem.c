@@ -5,6 +5,11 @@
 int recurs_wh_check(Tlds *ds, Tpoints *pts, Tpoint pt) {
 	Tsquare *sq = &ds->squares[pt.x][pt.y];
 
+	/* Si le trou de vers mène dans un mur */
+	if(sq->kind == LDS_WALL) {
+		return 1;
+	}
+
 	if(sq->opt == LDS_OptWH) {
 		if(pts_mem_pt(pts, pt)) {
 			return 1;
@@ -65,6 +70,8 @@ extern int lg_sem(Tlds*ds, const Tpdt*pdt) {
 		fprintf(stderr, "Infinite loop between worm holes!\n");
 		return 1;
 	}
+
+	/* Les autres conditions sont respectées dans labgen.y */
 
 	return 0;
 }
