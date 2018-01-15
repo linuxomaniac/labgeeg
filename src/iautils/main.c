@@ -85,7 +85,6 @@ int main(int argc, char*argv[])
     // parsing
     extern FILE* yyin;
     yyin = param.instream;
-    #if 0
     if ( yyparse() )
         return 1; // mess. printed by yyparse
     fclose( param.instream );
@@ -94,7 +93,6 @@ int main(int argc, char*argv[])
     if ( lg_sem(gl_lds, gl_pdt) )
         return 1; // mess. printed by lg_sem
     pdt_free( gl_pdt );
-    #endif
 
     // génération of labres lex & yacc codes
     // into lfname and yfname files

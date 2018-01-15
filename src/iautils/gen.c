@@ -18,12 +18,12 @@ extern int lg_gen(Tlds*ds, FILE* lstream, FILE*ystream, Cstr lcfname) {
 		return 1;
 	}
 
-	ret = gen_ytop(lstream);
+	ret = gen_ytop(ystream);
 	if(ret < 0) {
 		return 1;
 	}
 
-	ret = gen_ybody(ds, lstream);
+	ret = gen_ybody(ds, ystream);
 	if(ret < 0) {
 		return 1;
 	}
@@ -61,6 +61,8 @@ int gen_ytop(FILE *ystream) {
 		"%{\n"
 		"#include <stdio.h>\n"
 		"#include <stdlib.h>\n"
+		"int yyerror(const char *mess);\n"
+		"int yylex();\n"
 		"%}\n"
 		"%token SE SW NE NW\n"
 		"%token N S W E\n"
@@ -134,7 +136,7 @@ int gen_ybody(Tlds*ds, FILE *ystream) {
 
 	for(x = 0; x < ds->dx; x++) {
 		for(y = 0; y < ds->dy; y++) {
-			if(x != ds->in.x && y != ds->in.y) {
+			if(x != ds->in.x || y != ds->in.y) {
 				ret = gen_ybody_xy(ds, ystream, x, y);
 				if(ret) {
 					return 1;
@@ -150,7 +152,11 @@ int gen_ybody(Tlds*ds, FILE *ystream) {
 Tpoint *md_dest(Tlds *ds, Tsqmd *md, Twr wr) {
 	int i;
 
-	for(i = 0; i < LG_WrNb; i++) {
+	if(!md) {
+		return NULL;
+	}
+
+	for(i = LG_WrFirst; i < LG_WrNb; i++) {
 		if(md->t[i].chg && md->t[i].wrd == wr) {
 			return &md->t[i].dest;
 		}
@@ -170,120 +176,113 @@ Tpoint *wh_dest(Tlds *ds, Tpoint *src) {
 	return src;
 }
 
-int ybody_write_child(Tlds *ds, FILE *ystream, Twr wr, Tpoint *pt) {
+int ybody_write_child(Tlds *ds, FILE *ystream, Twr wr, int *started, Tpoint *pt) {
+	int ret;
+
 	pt = wh_dest(ds, pt);
-	return fprintf(ystream, "|%s square_%d%d", wr_uname(wr), pt->x, pt->y);
+
+	if(ds->squares[pt->x][pt->y].kind == LDS_OUT) {
+		ret = fprintf(ystream, "%c%s Exit", (*started?'|':':'), wr_uname(wr));
+	} else {
+		ret = fprintf(ystream, "%c%s square_%d%d", (*started?'|':':'), wr_uname(wr), pt->x, pt->y);
+	}
+
+	*started = 1;
+	return ret;
 }
 
 int gen_ybody_xy(Tlds*ds, FILE *ystream, int x, int y) {
 	int ret;
-	Tsquare *s;
 	Tsqmd *md;
 	Tpoint *p, pt;
+	int started = 0;
 
 	/* Le nom de la règle */
-	ret = fprintf(ystream, "square_%d%d:", x, y);
+	ret = fprintf(ystream, "square_%d%d", x, y);
 	if(ret < 0) {
 		return 1;
 	}
 
-	s = &ds->squares[x][y];
-	md = s->sq_mdp;
+	md = (ds->squares[x][y].kind == LDS_FREE && ds->squares[x][y].opt == LDS_OptMD)?ds->squares[x][y].sq_mdp:NULL;
 
 	/* Le nord */
-	if((p = md_dest(ds, md, LG_WrNN))) {
-		if(!p && y > 0 && ds->squares[x][y - 1].kind != LDS_WALL) {
-			pt.x = x; pt.y = y - 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrNN, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrNN);
+	if(!p && y > 0 && ds->squares[x][y - 1].kind != LDS_WALL) {
+		pt.x = x; pt.y = y - 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrNN, &started, p) < 0) {
+		return 1;
 	}
 
 	/* L'ouest */
-	if((p = md_dest(ds, md, LG_WrWW))) {
-		if(!p && x > 0 && ds->squares[x - 1][y].kind != LDS_WALL) {
-			pt.x = x - 1; pt.y = y;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrWW, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrWW);
+	if(!p && x > 0 && ds->squares[x - 1][y].kind != LDS_WALL) {
+		pt.x = x - 1; pt.y = y;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrWW, &started, p) < 0) {
+		return 1;
 	}
 
 	/* L'est */
-	if((p = md_dest(ds, md, LG_WrEE))) {
-		if(!p && x < ds->dx - 1 && ds->squares[x + 1][y].kind != LDS_WALL) {
-			pt.x = x + 1; pt.y = y;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrEE, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrEE);
+	if(!p && x < ds->dx - 1 && ds->squares[x + 1][y].kind != LDS_WALL) {
+		pt.x = x + 1; pt.y = y;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrEE, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Le sud */
-	if((p = md_dest(ds, md, LG_WrSS))) {
-		if(!p && y < ds->dy - 1 && ds->squares[x][y + 1].kind != LDS_WALL) {
-			pt.x = x; pt.y = y + 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrSS, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrSS);
+	if(!p && y < ds->dy - 1 && ds->squares[x][y + 1].kind != LDS_WALL) {
+		pt.x = x; pt.y = y + 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrSS, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Le nord-ouest */
-	if((p = md_dest(ds, md, LG_WrNW))) {
-		if(p && x > 0 && y > 0 && ds->squares[x - 1][y - 1].kind != LDS_WALL) {
-			pt.x = x - 1; pt.y = y - 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrNW, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrNW);
+	if(!p && x > 0 && y > 0 && ds->squares[x - 1][y - 1].kind != LDS_WALL) {
+		pt.x = x - 1; pt.y = y - 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrNW, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Le nord-est */
-	if((p = md_dest(ds, md, LG_WrNE))) {
-		if(p && x < ds->dx - 1 && y > 0 && ds->squares[x + 1][y - 1].kind != LDS_WALL) {
-			pt.x = x + 1; pt.y = y - 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrNE, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrNE);
+	if(!p && x < ds->dx - 1 && y > 0 && ds->squares[x + 1][y - 1].kind != LDS_WALL) {
+		pt.x = x + 1; pt.y = y - 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrNE, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Les Landes */
-	if((p = md_dest(ds, md, LG_WrSW))) {
-		if(p && x > 0 && y < ds->dx - 1 && ds->squares[x - 1][y + 1].kind != LDS_WALL) {
-			pt.x = x - 1; pt.y = y + 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrSW, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrSW);
+	if(!p && x > 0 && y < ds->dx - 1 && ds->squares[x - 1][y + 1].kind != LDS_WALL) {
+		pt.x = x - 1; pt.y = y + 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrSW, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Le sud-est */
-	if((p = md_dest(ds, md, LG_WrSE))) {
-		if(p && x < ds->dx - 1 && y < ds->dx - 1 && ds->squares[x + 1][y + 1].kind != LDS_WALL) {
-			pt.x = x + 1; pt.y = y + 1;
-			p = &pt;
-		}
-
-		if(p && ybody_write_child(ds, ystream, LG_WrSE, p) < 0) {
-			return 1;
-		}
+	p = md_dest(ds, md, LG_WrSE);
+	if(!p && x < ds->dx - 1 && y < ds->dx - 1 && ds->squares[x + 1][y + 1].kind != LDS_WALL) {
+		pt.x = x + 1; pt.y = y + 1;
+		p = &pt;
+	}
+	if(p && ybody_write_child(ds, ystream, LG_WrSE, &started, p) < 0) {
+		return 1;
 	}
 
 	/* Le point virgule */

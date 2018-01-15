@@ -66,34 +66,25 @@ labyrinthe
   : suite_vars instruction_size suite_instructions
   | instruction_size suite_instructions;
 
-suite_instructions
-  : suite_instructions_murs suite_instructions_autres
-  | suite_instructions_murs
-  | suite_instructions_autres;
-
 instruction_show
   : tk_SHOW                                       { lds_dump(gl_lds, stdout); };
 
-suite_instructions_autres
-  : suite_instructions_autres instruction_autre ';'
-  | instruction_autre ';'
-
-instruction_autre
-  : ';'
+suite_instructions
+  : suite_instructions instruction ';'
+  | suite_instructions ';'
+  | ';'
+  | suite_instructions instruction_show
   | instruction_show
-  | tk_IN pt                                      { if(lds_checkborder_pt(gl_lds, $2)) yyerror("The entry point must be located on the border!"); lds_draw_pt(gl_lds, LG_DrawIn, $2); }
+  | instruction ';'
+
+instruction
+  : tk_IN pt                                      { if(lds_checkborder_pt(gl_lds, $2)) yyerror("The entry point must be located on the border!"); lds_draw_pt(gl_lds, LG_DrawIn, $2); }
   | tk_OUT suite_pt                               { unsigned int i; for(i = 0; i < $2->nb; i++) { if(lds_checkborder_pt(gl_lds, $2->t[i])) yyerror("Exit points must be located on the border!"); } lds_draw_pts(gl_lds, LG_DrawOut, $2); pts_free($2); }
   | tk_WH serie_pt                                { add_wormhole($2); pts_free($2); }
   | tk_MD pt dest_list                            { add_md($2, $3); pt3s_free($3); };
-
-suite_instructions_murs
-  : suite_instructions_murs instruction_mur ';'
-  | instruction_mur ';'
-
-instruction_mur
-  : inst                                          { fill($1); }
+  | inst                                          { fill($1); }
   | inst tk_PTA suite_pt                          { lds_draw_pts(gl_lds, $1, $3); pts_free($3); }
-  | inst tk_PTD pt suite_ptri                     { draw_ptri($1, $4); pt3s_free($4); }
+  | inst tk_PTD suite_ptri                        { draw_ptri($1, $3); pt3s_free($3); }
   | inst tk_R pt pt                               { draw_rect($3, $4, $1, false); }
   | inst tk_R tk_F pt pt                          { draw_rect($4, $5, $1, true); }
   | inst tk_FOR for_args '(' expr ',' expr ')'    { for_function($1, 0, $3, $5, $7); };
@@ -124,10 +115,10 @@ var
   | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val %= $4; free($1); };
 
 range
-  : '[' CNUM ':' CNUM ']'             { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM ']'   { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; }
-  | '[' CNUM ':' CNUM '['             { int v = $4 -1; if($2 > v) yyerror("Value error: %d > %d", $2, v); $$ = (Tpoint3){.xy.x = $2, .xy.y = v, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM '['   { int v = $4 - 1; if($2 > v) yyerror("Value error: %d > %d", $2, v); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = v, .z = $6}; };
+  : '[' CNUM ':' CNUM ']'           { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM ']'  { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = $6}; }
+  | '[' CNUM ':' CNUM '['           { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
+  | '[' CNUM ':' CNUM ':' CNUM '['  { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; };
 
 pt : '(' xcst ',' xcst ')'  { if(lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
 
@@ -243,8 +234,8 @@ void add_md(Tpoint pt, Tpoint3s *l) {
 void fill(TdrawOpt dopt) {
   unsigned int i, j;
 
-  for(i = 0; !lds_check_xy(gl_lds, i, j); i++) {
-    for(j = 0; !lds_check_xy(gl_lds, i, j); j++) {
+  for(i = 0; !lds_check_xy(gl_lds, i, 0); i++) {
+    for(j = 0; !lds_check_xy(gl_lds, 0, j); j++) {
       lds_draw_xy(gl_lds, dopt, i, j);
     }
   }
@@ -325,8 +316,8 @@ void check_wall(Tpoint p) {
 
 
 int for_function_eval(Texpr *e) {
-  const char uv[100];
-  int val = 0, ret = expr_eval(e, gl_pdt->fvars, &val, (const char **)&uv);
+  Cstr uv;
+  int val = 0, ret = expr_eval(e, gl_pdt->fvars, &val, &uv);
 
   switch(ret) {
     case 1:

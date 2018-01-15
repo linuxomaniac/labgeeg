@@ -60,6 +60,7 @@ extern int lg_sem(Tlds*ds, const Tpdt*pdt) {
 	}
 
 	/* Vérification de la RS-10 */
+	y = 0;
 	for(x = 0; x < pdt->wh->nb && !y; x++) {
 		pts = pts_new();
 		y = recurs_wh_check(ds, pts, pdt->wh->t[x]);
