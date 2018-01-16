@@ -29,7 +29,8 @@ extern Tpdt * pdt_new ()
 
 extern void   pdt_free(Tpdt *pdt)
 {
-    for(int i = 0; i < PDT_FVARSSIZE && pdt->fvars_names[i] != NULL; i++) {
+    int i;
+    for(i = 0; i < PDT_FVARSSIZE && pdt->fvars_names[i] != NULL; i++) {
         free(pdt->fvars_names[i]);
     }
 

@@ -99,8 +99,8 @@ for_args
   | IDENT for_args range	{ $$ = $2 + 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); };
 
 instruction_size
-  : tk_SIZE xcst ';'          { if($2 < 2 || $2 >= LDS_SIZE) yyerror("%d invalid size", $2); lds_size_set(gl_lds, $2, $2); }
-  | tk_SIZE xcst ',' xcst ';' { if($2 < 2 || $2 >= LDS_SIZE || $4 < 0 || $4 >= LDS_SIZE) yyerror("%d invalid size", $2); lds_size_set(gl_lds, $2, $4); };
+  : tk_SIZE xcst ';'          { int val = $2 + 1; if(val < 2 || val >= LDS_SIZE) yyerror("%d invalid size", val); lds_size_set(gl_lds, val, val); }
+  | tk_SIZE xcst ',' xcst ';' { int v1 = $2 + 1, v2 = $4 + 1; if(v1 < 2 || v1 >= LDS_SIZE || v2 < 0 || v2 >= LDS_SIZE) yyerror("(%d, %d) invalid size", v1, v2); lds_size_set(gl_lds, v1, v2); };
 
 suite_vars
   : suite_vars var ';'
