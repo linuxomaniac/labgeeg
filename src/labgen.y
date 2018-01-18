@@ -52,7 +52,7 @@ void for_function(TdrawOpt dopt, int level, int max_level, Texpr* e1, Texpr* e2)
 
 %type <lpts> suite_pt serie_pt
 %type <lpt3s> suite_ptri dest_list
-%type <tpt> pt
+%type <tpt> pt pt_unsafe
 %type <tpt3> range
 %type <entier> xcst ri CNUM for_args
 %type <chaine> IDENT 
@@ -120,7 +120,8 @@ range
   | '[' CNUM ':' CNUM '['           { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
   | '[' CNUM ':' CNUM ':' CNUM '['  { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; };
 
-pt : '(' xcst ',' xcst ')'  { if(lds_check_xy(gl_lds, $2, $4)) yyerror("(%d, %d) out of bounds", $2, $4); $$ = (Tpoint){.x = $2, .y = $4}; };
+pt : pt_unsafe                      { if(lds_check_xy(gl_lds, $1.x, $1.y)) yyerror("(%d, %d) out of bounds", $1.x, $1.y); $$ = $1; };
+pt_unsafe : '(' xcst ',' xcst ')'   { $$ = (Tpoint){.x = $2, .y = $4}; };
 
 suite_pt
   : suite_pt pt { pts_app_pt($$ = $1, $2); }
@@ -135,10 +136,10 @@ suite_tirets
   | '-';
 
 suite_ptri
-  : suite_ptri pt         { pt3s_app_p2z($$ = $1, $2, 1); }
-  | suite_ptri pt ':' ri  { pt3s_app_p2z($$ = $1, $2, $4); }
-  | pt                    { $$ = pt3s_new_p2z($1, 1); }
-  | pt ':' ri             { $$ = pt3s_new_p2z($1, $3); };
+  : suite_ptri pt_unsafe         { pt3s_app_p2z($$ = $1, $2, 1); }
+  | suite_ptri pt_unsafe ':' ri  { pt3s_app_p2z($$ = $1, $2, $4); }
+  | pt_unsafe                    { $$ = pt3s_new_p2z($1, 1); }
+  | pt_unsafe ':' ri             { $$ = pt3s_new_p2z($1, $3); };
 
 ri
   : xcst
