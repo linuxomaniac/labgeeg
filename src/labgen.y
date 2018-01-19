@@ -116,10 +116,10 @@ var
   | IDENT '%' '=' xcst    { Tvar *v; if(!(v = vars_get(gl_pdt->vars, $1))) yyerror("%s undefined", $1); v->val %= $4; free($1); };
 
 range
-  : '[' CNUM ':' CNUM ']'           { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM ']'  { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = $6}; }
-  | '[' CNUM ':' CNUM '['           { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
-  | '[' CNUM ':' CNUM ':' CNUM '['  { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; };
+  : '[' xcst ':' xcst ']'           { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = 1}; }
+  | '[' xcst ':' xcst ':' xcst ']'  { if($2 > $4) yyerror("Value error: %d > %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4 + 1, .z = $6}; }
+  | '[' xcst ':' xcst '['           { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = 1}; }
+  | '[' xcst ':' xcst ':' xcst '['  { if($2 >= $4) yyerror("Value error: %d >= %d", $2, $4); if($6 <1) yyerror("Value error: %d must be greater than 0", $6); $$ = (Tpoint3){.xy.x = $2, .xy.y = $4, .z = $6}; };
 
 pt : pt_unsafe                      { if(lds_check_xy(gl_lds, $1.x, $1.y)) yyerror("(%d, %d) out of bounds", $1.x, $1.y); $$ = $1; };
 pt_unsafe : '(' xcst ',' xcst ')'   { $$ = (Tpoint){.x = $2, .y = $4}; };
