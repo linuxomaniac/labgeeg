@@ -182,11 +182,13 @@ int ybody_write_child(Tlds *ds, FILE *ystream, Twr wr, int *started, Tpoint *pt)
 
 	pt = wh_dest(ds, pt);
 
+	/*
 	if(ds->squares[pt->x][pt->y].kind == LDS_OUT) {
 		ret = fprintf(ystream, "%s%s Exit", (*started?"|":""), wr_uname(wr));
 	} else {
+	*/
 		ret = fprintf(ystream, "%s%s square_%d_%d", (*started?"|":""), wr_uname(wr), pt->x, pt->y);
-	}
+	/*}*/
 
 	*started = 1;
 	return ret;
@@ -203,6 +205,11 @@ int gen_ybody_xy(Tlds*ds, FILE *ystream, int x, int y) {
 	ret = fprintf(ystream, "square_%d_%d:", x, y);
 	if(ret < 0) {
 		return 1;
+	}
+
+	if(ds->squares[x][y].kind == LDS_OUT) {
+		/* Cela permet d'ajouter la règle vide à la case, ce qui autorise à s'arrêter dessus */
+		started = 1;
 	}
 
 	md = (ds->squares[x][y].kind == LDS_FREE && ds->squares[x][y].opt == LDS_OptMD)?ds->squares[x][y].sq_mdp:NULL;

@@ -124,15 +124,16 @@ int main(int argc, char*argv[])
     int status=0;
     char cmd[4*FNAME_SZ+100];
     sprintf(cmd,"bison -o %s %s 2>/dev/null",ycfname,yfname);
-    if ( system(cmd)!=0 )
+    if ( system(cmd)!=0 ) {
+        u_error("no path from input to output");
         exit(u_error("parser generation fails: %s",cmd));
+    }
     sprintf(cmd,"flex -o %s %s",lcfname,lfname);
     if ( system(cmd)!=0 )
         exit(u_error("parser generation fails: %s",cmd));
     sprintf(cmd,"gcc -g -o %s %s",param.outfilename,ycfname);
     if ( system(cmd)!=0 ) {
         u_error("parser generation fails: %s",cmd);
-        u_error("no path from input to output");
         status = 1;
     }
 #if 0
