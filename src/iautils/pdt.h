@@ -19,7 +19,7 @@
 /*= Parser DaTa                                                        =*/
 
 struct _Tpdt {
-    Tvars *vars, *fvars;
+    Tvars *vars;
     char *fvars_names[PDT_FVARSSIZE]; // we need an array to store in order
                                      // the variables names
     int fvars_index;

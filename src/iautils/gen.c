@@ -137,7 +137,7 @@ int gen_ybody(Tlds*ds, FILE *ystream) {
 
 	for(x = 0; x < ds->dx; x++) {
 		for(y = 0; y < ds->dy; y++) {
-			if(x != ds->in.x || y != ds->in.y) {
+			if(!(x == ds->in.x && y == ds->in.y) && ds->squares[x][y].kind != LDS_WALL) {
 				ret = gen_ybody_xy(ds, ystream, x, y);
 				if(ret) {
 					return 1;
@@ -183,9 +183,9 @@ int ybody_write_child(Tlds *ds, FILE *ystream, Twr wr, int *started, Tpoint *pt)
 	pt = wh_dest(ds, pt);
 
 	if(ds->squares[pt->x][pt->y].kind == LDS_OUT) {
-		ret = fprintf(ystream, "%c%s Exit", (*started?'|':':'), wr_uname(wr));
+		ret = fprintf(ystream, "%s%s Exit", (*started?"|":""), wr_uname(wr));
 	} else {
-		ret = fprintf(ystream, "%c%s square_%d_%d", (*started?'|':':'), wr_uname(wr), pt->x, pt->y);
+		ret = fprintf(ystream, "%s%s square_%d_%d", (*started?"|":""), wr_uname(wr), pt->x, pt->y);
 	}
 
 	*started = 1;
@@ -200,7 +200,7 @@ int gen_ybody_xy(Tlds*ds, FILE *ystream, int x, int y) {
 	int i, j, xl, yl, started = 0;
 
 	/* Le nom de la règle */
-	ret = fprintf(ystream, "square_%d_%d", x, y);
+	ret = fprintf(ystream, "square_%d_%d:", x, y);
 	if(ret < 0) {
 		return 1;
 	}

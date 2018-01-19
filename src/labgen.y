@@ -67,15 +67,20 @@ labyrinthe
   | instruction_size suite_instructions;
 
 instruction_show
-  : tk_SHOW                                       { lds_dump(gl_lds, stdout); };
+  : tk_SHOW       { lds_dump(gl_lds, stdout); };
 
 suite_instructions
-  : suite_instructions instruction ';'
-  | suite_instructions ';'
-  | ';'
+  : ';'
+  | suite_instructions instruction ';'
+  | suite_instructions var ';'
   | suite_instructions instruction_show
   | instruction_show
-  | instruction ';'
+  | var ';'
+  | instruction ';';
+
+suite_vars
+  : suite_vars var ';'
+  | var ';';
 
 instruction
   : tk_IN pt                                      { if(lds_checkborder_pt(gl_lds, $2)) yyerror("The entry point must be located on the border!"); lds_draw_pt(gl_lds, LG_DrawIn, $2); }
@@ -95,16 +100,12 @@ inst
   | tk_TOGGLE { $$ = LG_DrawToggle; };
 
 for_args
-  : IDENT tk_IN range		{ $$ = 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); }
-  | IDENT for_args range	{ $$ = $2 + 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->fvars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); };
+  : IDENT tk_IN range		{ $$ = 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->vars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); }
+  | IDENT for_args range	{ $$ = $2 + 1; gl_pdt->fvars_names[gl_pdt->fvars_index++] = strdup($1); vars_chgOrAddEated(gl_pdt->vars, $1, 0); pt3s_app_pt3(gl_pdt->frgs, $3); };
 
 instruction_size
   : tk_SIZE xcst ';'          { int val = $2 + 1; if(val < 2 || val >= LDS_SIZE) yyerror("%d invalid size", val); lds_size_set(gl_lds, val, val); }
   | tk_SIZE xcst ',' xcst ';' { int v1 = $2 + 1, v2 = $4 + 1; if(v1 < 2 || v1 >= LDS_SIZE || v2 < 0 || v2 >= LDS_SIZE) yyerror("(%d, %d) invalid size", v1, v2); lds_size_set(gl_lds, v1, v2); };
-
-suite_vars
-  : suite_vars var ';'
-  | var ';';
 
 var
   : IDENT '=' xcst        { vars_chgOrAddEated(gl_pdt->vars, $1, $3); }
@@ -262,16 +263,17 @@ void draw_ptri(TdrawOpt dopt, Tpoint3s *l){
     }
 
     for(k = 0; k < pt.z || pt.z == -1; k++) {
-      x += pt.xy.x;
-      y += pt.xy.y;
 
-      if(lds_check_xy(gl_lds, x, y)) {
+      if(lds_check_xy(gl_lds, x + pt.xy.x, y + pt.xy.y)) {
         if(pt.z == -1) {
           break;
         } else {
           yyerror("(%d, %d): move out of bounds", x, y);
         }
       }
+
+      x += pt.xy.x;
+      y += pt.xy.y;
 
       if(dopt == LG_DrawToggle) {
         if(!pts_mem_xy(processed, x, y)) {
@@ -299,7 +301,7 @@ void draw_rect(Tpoint p1, Tpoint p2, TdrawOpt dopt, bool F) {
   pmax.y = MAX(p1.y, p2.y);
 
   for(x = pmin.x; x <= pmax.x; x++) {
-    for(y = pmin.y; x <= pmax.y; y++) {
+    for(y = pmin.y; y <= pmax.y; y++) {
       if(F || (x == p1.x || x == p2.x || y == p1.y || y == p2.y)) {
         lds_draw_xy(gl_lds, dopt, x, y);
       }
@@ -318,7 +320,7 @@ void check_wall(Tpoint p) {
 
 int for_function_eval(Texpr *e) {
   Cstr uv;
-  int val = 0, ret = expr_eval(e, gl_pdt->fvars, &val, &uv);
+  int val = 0, ret = expr_eval(e, gl_pdt->vars, &val, &uv);
 
   switch(ret) {
     case 1:
@@ -345,7 +347,7 @@ void for_function(TdrawOpt dopt, int level, int max_level, Texpr* e1, Texpr* e2)
     }
   } else {
     /* Fetch the variable value in the bintree by its name in the array given the index (level) */
-    int *var = &(vars_get(gl_pdt->fvars, gl_pdt->fvars_names[level])->val);
+    int *var = &(vars_get(gl_pdt->vars, gl_pdt->fvars_names[level])->val);
     Tpoint3 *rg = &(gl_pdt->frgs->t[max_level - level - 1]);
 
     for(*var = rg->xy.x; *var < rg->xy.y; *var += rg->z) {
